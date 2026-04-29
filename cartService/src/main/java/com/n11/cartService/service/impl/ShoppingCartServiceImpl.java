@@ -4,127 +4,122 @@ import com.n11.cartService.client.ProductClient;
 import com.n11.cartService.client.dto.ProductResponse;
 import com.n11.cartService.dto.AddItemRequest;
 import com.n11.cartService.dto.response.ShoppingCartResponse;
-import com.n11.cartService.entity.CartItem;
-import com.n11.cartService.entity.ShoppingCart;
 import com.n11.cartService.exception.CartNotFoundException;
 import com.n11.cartService.mapper.ShoppingCartMapper;
-import com.n11.cartService.repository.CartItemRepository;
-import com.n11.cartService.repository.ShoppingCartRepository;
+import com.n11.cartService.model.CartItem;
+import com.n11.cartService.model.ShoppingCart;
 import com.n11.cartService.service.ShoppingCartService;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 
 @Service
 public class ShoppingCartServiceImpl implements ShoppingCartService {
 
-    private final ShoppingCartRepository cartRepository;
-    private final CartItemRepository cartItemRepository;
+    private static final String KEY_PREFIX = "cart:";
+
+    private final RedisTemplate<String, ShoppingCart> redisTemplate;
     private final ShoppingCartMapper cartMapper;
     private final ProductClient productClient;
 
-    public ShoppingCartServiceImpl(ShoppingCartRepository cartRepository,
-                                   CartItemRepository cartItemRepository,
+    public ShoppingCartServiceImpl(RedisTemplate<String, ShoppingCart> redisTemplate,
                                    ShoppingCartMapper cartMapper,
                                    ProductClient productClient) {
-        this.cartRepository = cartRepository;
-        this.cartItemRepository = cartItemRepository;
+        this.redisTemplate = redisTemplate;
         this.cartMapper = cartMapper;
         this.productClient = productClient;
     }
 
     @Override
     public ShoppingCartResponse getOrCreateCart(Long userId) {
-        ShoppingCart cart = cartRepository.findByUserId(userId)
-                .orElseGet(() -> {
-                    ShoppingCart newCart = new ShoppingCart();
-                    newCart.setUserId(userId);
-                    return cartRepository.save(newCart);
-                });
-        return cartMapper.toResponse(cart);
+        return cartMapper.toResponse(findOrCreate(userId));
     }
 
     @Override
-    @Transactional
     public ShoppingCartResponse addItem(Long userId, AddItemRequest request) {
         if (request.productId() == null || request.quantity() == null || request.quantity() <= 0) {
             throw new IllegalArgumentException("productId and quantity are required");
         }
 
         ProductResponse product = productClient.getById(request.productId());
+        ShoppingCart cart = findOrCreate(userId);
 
-        ShoppingCart cart = cartRepository.findByUserId(userId)
-                .orElseGet(() -> {
-                    ShoppingCart newCart = new ShoppingCart();
-                    newCart.setUserId(userId);
-                    return cartRepository.save(newCart);
-                });
+        cart.getItems().stream()
+                .filter(i -> i.getProductId().equals(request.productId()))
+                .findFirst()
+                .ifPresentOrElse(
+                        i -> i.setQuantity(i.getQuantity() + request.quantity()),
+                        () -> {
+                            CartItem newItem = new CartItem();
+                            newItem.setProductId(request.productId());
+                            newItem.setPrice(product.getPrice());
+                            newItem.setQuantity(request.quantity());
+                            cart.getItems().add(newItem);
+                        }
+                );
 
-        CartItem item = cartItemRepository
-                .findByCartIdAndProductId(cart.getId(), request.productId())
-                .orElseGet(() -> {
-                    CartItem newItem = new CartItem();
-                    newItem.setCart(cart);
-                    newItem.setProductId(request.productId());
-                    newItem.setPrice(product.getPrice());
-                    return newItem;
-                });
-
-        item.setQuantity(item.getQuantity() == null
-                ? request.quantity()
-                : item.getQuantity() + request.quantity());
-
-        cartItemRepository.save(item);
-
-        ShoppingCart updated = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new CartNotFoundException(userId));
-        return cartMapper.toResponse(updated);
+        save(cart);
+        return cartMapper.toResponse(cart);
     }
 
     @Override
-    @Transactional
     public ShoppingCartResponse removeItem(Long userId, Long productId) {
-        ShoppingCart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new CartNotFoundException(userId));
-        cart.getItems().removeIf(item -> item.getProductId().equals(productId));
-        return cartMapper.toResponse(cartRepository.save(cart));
+        ShoppingCart cart = findOrThrow(userId);
+        cart.getItems().removeIf(i -> i.getProductId().equals(productId));
+        save(cart);
+        return cartMapper.toResponse(cart);
     }
 
     @Override
-    @Transactional
     public ShoppingCartResponse updateQuantity(Long userId, Long productId, Integer quantity) {
         if (quantity <= 0) throw new IllegalArgumentException("Quantity must be greater than 0");
 
-        ShoppingCart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new CartNotFoundException(userId));
-
+        ShoppingCart cart = findOrThrow(userId);
         cart.getItems().stream()
-                .filter(item -> item.getProductId().equals(productId))
+                .filter(i -> i.getProductId().equals(productId))
                 .findFirst()
-                .ifPresent(item -> item.setQuantity(quantity));
+                .ifPresent(i -> i.setQuantity(quantity));
 
-        return cartMapper.toResponse(cartRepository.save(cart));
+        save(cart);
+        return cartMapper.toResponse(cart);
     }
 
     @Override
-    @Transactional
     public void clearCart(Long userId) {
-        ShoppingCart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new CartNotFoundException(userId));
-        cart.getItems().clear();
-        cartRepository.save(cart);
+        redisTemplate.delete(key(userId));
     }
 
     @Override
     public Map<String, Long> getTotalPrice(Long userId) {
-        ShoppingCart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new CartNotFoundException(userId));
-
+        ShoppingCart cart = findOrThrow(userId);
         long total = cart.getItems().stream()
-                .mapToLong(item -> item.getPrice() * item.getQuantity())
+                .mapToLong(i -> i.getPrice() * i.getQuantity())
                 .sum();
-
         return Map.of("totalPrice", total);
+    }
+
+    private ShoppingCart findOrCreate(Long userId) {
+        ShoppingCart cart = redisTemplate.opsForValue().get(key(userId));
+        if (cart == null) {
+            cart = new ShoppingCart();
+            cart.setUserId(userId);
+            save(cart);
+        }
+        return cart;
+    }
+
+    private ShoppingCart findOrThrow(Long userId) {
+        ShoppingCart cart = redisTemplate.opsForValue().get(key(userId));
+        if (cart == null) throw new CartNotFoundException(userId);
+        return cart;
+    }
+
+    private void save(ShoppingCart cart) {
+        redisTemplate.opsForValue().set(key(cart.getUserId()), cart);
+    }
+
+    private String key(Long userId) {
+        return KEY_PREFIX + userId;
     }
 }
