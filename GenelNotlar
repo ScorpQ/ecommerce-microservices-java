@@ -1,0 +1,10 @@
+Product servisin kendisi:
+    http://localhost:8085/api/product
+
+    Product swagger:
+    http://localhost:8085/swagger-ui/index.html
+
+
+
+Product'a api gateway ile gitmek istersek:
+    http://localhost:8763/api/product
