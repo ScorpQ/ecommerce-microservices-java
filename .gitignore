@@ -1,0 +1,24 @@
+# Application properties (use *.example.properties instead)
+**/application.properties
+
+# Maven
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+
+# IntelliJ
+**/.idea/
+**/*.iml
+**/*.iws
+**/*.ipr
+out/
+
+# Logs
+**/*.log
+**/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+**/.env
