@@ -14,6 +14,11 @@ Product'a api gateway ile gitmek istersek:
 
 
 
+
+    Yapılması gerekenler manuel:
+
+       Design patternler kesinlikle çalışmalısın.
+
    Aldığım hatlar:
 
    response return de dto yerine entity yapılmış
@@ -24,3 +29,11 @@ Product'a api gateway ile gitmek istersek:
         1: client_id=user-service yazıyordu, Keycloak'taki client user-services idi
         2: microservice-realm SSL required açıktı → DB'den NONE yaptık
         3: signup sırasında Keycloak'ta kullanıcı oluşturulmuyordu → Admin API ile otomatik oluşturma ekledik
+
+
+
+        servislerin buildini alma kodu:
+        cd "/c/Users/cansi/OneDrive/Desktop/finalBoss/stock-service" && ./mvnw clean package -DskipTests
+
+        build alınmış kodu gönderme:
+        scp -i "/c/Users/cansi/Downloads/product-service-key.pem" /c/Users/cansi/OneDrive/Desktop/finalBoss/stock-service/target/stock-service-0.0.1-SNAPSHOT.jar ec2-user@13.60.44.13:~/finalBoss/stock-service/
