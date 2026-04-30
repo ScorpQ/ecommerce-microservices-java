@@ -1,0 +1,118 @@
+services:
+
+  redis:
+    image: redis:7.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.5
+    container_name: keycloak
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: YOUR_KEYCLOAK_ADMIN_PASSWORD
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://YOUR_RDS_ENDPOINT:5432/YOUR_KEYCLOAK_DB_NAME
+      KC_DB_USERNAME: YOUR_DB_USERNAME
+      KC_DB_PASSWORD: YOUR_DB_PASSWORD
+      KC_HTTP_PORT: 8180
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME: YOUR_DOMAIN
+      KC_PROXY: edge
+    ports:
+      - "8180:8180"
+    restart: unless-stopped
+
+  eureka:
+    build: ./eureka
+    container_name: eureka
+    ports:
+      - "8761:8761"
+    environment:
+      EUREKA_HOSTNAME: eureka
+    restart: unless-stopped
+
+  config-server:
+    build: ./configServer
+    container_name: config-server
+    ports:
+      - "8762:8762"
+    environment:
+      EUREKA_HOSTNAME: eureka
+    depends_on:
+      - eureka
+    restart: unless-stopped
+
+  gateway:
+    build: ./gatewayServer
+    container_name: gateway
+    ports:
+      - "8763:8763"
+    environment:
+      EUREKA_URI: http://eureka:8761/eureka
+      CONFIG_URI: http://config-server:8762
+      GATEWAY_DISCOVERY_ENABLED: "true"
+    depends_on:
+      - eureka
+      - config-server
+    restart: unless-stopped
+
+  product-service:
+    build: ./productService
+    container_name: product-service
+    ports:
+      - "8085:8085"
+    environment:
+      EUREKA_URI: http://eureka:8761/eureka
+      CONFIG_URI: http://config-server:8762
+      DB_HOST: YOUR_RDS_ENDPOINT
+      DB_USERNAME: YOUR_DB_USERNAME
+      DB_PASSWORD: YOUR_DB_PASSWORD
+    depends_on:
+      - eureka
+      - config-server
+    restart: unless-stopped
+
+  cart-service:
+    build: ./cartService
+    container_name: cart-service
+    ports:
+      - "8088:8088"
+    environment:
+      EUREKA_URI: http://eureka:8761/eureka
+      CONFIG_URI: http://config-server:8762
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - redis
+      - eureka
+      - config-server
+    restart: unless-stopped
+
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    ports:
+      - "8086:8086"
+    environment:
+      EUREKA_URI: http://eureka:8761/eureka
+      CONFIG_URI: http://config-server:8762
+      DB_HOST: YOUR_RDS_ENDPOINT
+      DB_USERNAME: YOUR_DB_USERNAME
+      DB_PASSWORD: YOUR_DB_PASSWORD
+      KEYCLOAK_TOKEN_URI: http://YOUR_DOMAIN:8180/realms/YOUR_REALM/protocol/openid-connect/token
+      KEYCLOAK_ISSUER_URI: http://YOUR_DOMAIN:8180/realms/YOUR_REALM
+      KEYCLOAK_CLIENT_SECRET: YOUR_KEYCLOAK_CLIENT_SECRET
+      KEYCLOAK_ADMIN_BASE_URI: http://YOUR_DOMAIN:8180
+      KEYCLOAK_ADMIN_USERNAME: YOUR_KEYCLOAK_ADMIN_USERNAME
+      KEYCLOAK_ADMIN_PASSWORD: YOUR_KEYCLOAK_ADMIN_PASSWORD
+    depends_on:
+      - eureka
+      - config-server
+      - keycloak
+    restart: unless-stopped

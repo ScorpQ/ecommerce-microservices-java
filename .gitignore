@@ -12,6 +12,9 @@
 **/*.ipr
 out/
 
+# Claude
+.claude/
+
 # Logs
 **/*.log
 **/logs/
@@ -22,3 +25,4 @@ Thumbs.db
 
 # Docker
 **/.env
+docker-compose.yml

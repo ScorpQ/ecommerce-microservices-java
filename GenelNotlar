@@ -8,3 +8,19 @@ Product servisin kendisi:
 
 Product'a api gateway ile gitmek istersek:
     http://localhost:8763/api/product
+
+
+
+
+
+
+   Aldığım hatlar:
+
+   response return de dto yerine entity yapılmış
+
+   keycloack'Tan token alınamadı sign in sırasında fotoğrfalandı
+
+      - - - DB'Den SSL için https ayarını kapatarak çözdüm
+        1: client_id=user-service yazıyordu, Keycloak'taki client user-services idi
+        2: microservice-realm SSL required açıktı → DB'den NONE yaptık
+        3: signup sırasında Keycloak'ta kullanıcı oluşturulmuyordu → Admin API ile otomatik oluşturma ekledik
