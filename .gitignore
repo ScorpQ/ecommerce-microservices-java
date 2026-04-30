@@ -1,5 +1,5 @@
 # Application properties (use *.example.properties instead)
-**/application.properties
+**/*.properties
 
 # Maven
 **/target/
