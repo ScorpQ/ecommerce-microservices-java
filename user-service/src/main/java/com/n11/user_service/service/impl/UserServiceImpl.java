@@ -1,6 +1,8 @@
 package com.n11.user_service.service.impl;
 
+import com.n11.user_service.client.KeycloakAdminClient;
 import com.n11.user_service.client.KeycloakClient;
+import com.n11.user_service.client.dto.KeycloakUserRequest;
 import com.n11.user_service.dto.request.LoginRequest;
 import com.n11.user_service.dto.request.SignupRequest;
 import com.n11.user_service.dto.request.UpdateUserRequest;
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import java.util.List;
+
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -26,19 +30,28 @@ public class UserServiceImpl implements UserService {
     @Value("${keycloak.client-secret}")
     private String clientSecret;
 
+    @Value("${keycloak.admin-username}")
+    private String keycloakAdminUsername;
+
+    @Value("${keycloak.admin-password}")
+    private String keycloakAdminPassword;
+
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final KeycloakClient keycloakClient;
+    private final KeycloakAdminClient keycloakAdminClient;
 
     public UserServiceImpl(UserRepository userRepository,
                            UserMapper userMapper,
                            PasswordEncoder passwordEncoder,
-                           KeycloakClient keycloakClient) {
+                           KeycloakClient keycloakClient,
+                           KeycloakAdminClient keycloakAdminClient) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.keycloakClient = keycloakClient;
+        this.keycloakAdminClient = keycloakAdminClient;
     }
 
     @Override
@@ -69,7 +82,9 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole("USER");
 
-        return userMapper.toResponse(userRepository.save(user));
+        UserResponse response = userMapper.toResponse(userRepository.save(user));
+        createKeycloakUser(request.getUsername(), request.getEmail(), request.getPassword());
+        return response;
     }
 
     @Override
@@ -105,5 +120,24 @@ public class UserServiceImpl implements UserService {
         params.add("password", password);
 
         return keycloakClient.getToken(params).getAccessToken();
+    }
+
+    private void createKeycloakUser(String username, String email, String rawPassword) {
+        MultiValueMap<String, String> adminParams = new LinkedMultiValueMap<>();
+        adminParams.add("grant_type", "password");
+        adminParams.add("client_id", "admin-cli");
+        adminParams.add("username", keycloakAdminUsername);
+        adminParams.add("password", keycloakAdminPassword);
+
+        String adminToken = keycloakAdminClient.getAdminToken(adminParams).getAccessToken();
+
+        KeycloakUserRequest.CredentialRepresentation credential =
+                new KeycloakUserRequest.CredentialRepresentation("password", rawPassword, false);
+
+        KeycloakUserRequest userRequest = new KeycloakUserRequest(
+                username, email, true, List.of(credential)
+        );
+
+        keycloakAdminClient.createUser("Bearer " + adminToken, userRequest);
     }
 }
