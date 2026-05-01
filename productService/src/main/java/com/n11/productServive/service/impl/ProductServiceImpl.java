@@ -3,6 +3,7 @@ package com.n11.productServive.service.impl;
 import com.n11.productServive.dto.request.ProductRequest;
 import com.n11.productServive.dto.response.ProductResponse;
 import com.n11.productServive.entity.Product;
+import com.n11.productServive.event.ProductCreatedEvent;
 import com.n11.productServive.exception.ProductNotFoundException;
 import com.n11.productServive.mapper.ProductMapper;
 import com.n11.productServive.repository.ProductRepository;
@@ -11,6 +12,7 @@ import com.n11.productServive.service.S3Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,11 +24,13 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
     private final S3Service s3Service;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public ProductServiceImpl(ProductRepository productRepository, ProductMapper productMapper, S3Service s3Service) {
+    public ProductServiceImpl(ProductRepository productRepository, ProductMapper productMapper, S3Service s3Service, KafkaTemplate<String, Object> kafkaTemplate) {
         this.productRepository = productRepository;
         this.productMapper = productMapper;
         this.s3Service = s3Service;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @Override
@@ -43,7 +47,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse create(ProductRequest request) {
-        return productMapper.toResponse(productRepository.save(productMapper.toEntity(request)));
+        Product saved = productRepository.save(productMapper.toEntity(request));
+        try {
+            kafkaTemplate.send("product-created", new ProductCreatedEvent(saved.getId(), saved.getTitle()));
+        } catch (Exception e) {
+            System.err.println("Kafka send failed for product-created: " + e.getMessage());
+        }
+        return productMapper.toResponse(saved);
     }
 
     @Override
