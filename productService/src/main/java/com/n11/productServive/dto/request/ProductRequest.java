@@ -8,8 +8,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ProductRequest {
-    @NotNull
-    @Positive
     private Long price;
     private String img;
     private String labels;

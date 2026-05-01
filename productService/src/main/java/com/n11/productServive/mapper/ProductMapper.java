@@ -5,6 +5,7 @@ import com.n11.productServive.dto.response.ProductResponse;
 import com.n11.productServive.entity.Product;
 import org.springframework.stereotype.Component;
 
+// Entity ve DTO dönüşümünü contollerda yapmak yerine merkezi bir yerde topladım.
 @Component
 public class ProductMapper {
 

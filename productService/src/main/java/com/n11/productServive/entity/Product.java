@@ -26,7 +26,7 @@ public class Product {
     @Column(name = "price", nullable = false)
     private long price;
 
-    @Column(name = "img", length = 512)
+    @Column(name = "img", length = 1024)
     private String img;
 
     @Column(name = "labels", length = 255)
@@ -46,4 +46,7 @@ public class Product {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "visible", nullable = false)
+    private boolean visible = true;
 }
