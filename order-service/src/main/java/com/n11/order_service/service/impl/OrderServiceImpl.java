@@ -8,7 +8,6 @@ import com.n11.order_service.entity.Order;
 import com.n11.order_service.entity.OrderDetails;
 import com.n11.order_service.entity.OrderItem;
 import com.n11.order_service.entity.OrderStatus;
-import com.n11.order_service.event.OrderCreatedEvent;
 import com.n11.order_service.repository.OrderRepository;
 import com.n11.order_service.saga.PaymentCardStore;
 import com.n11.order_service.service.OrderService;
@@ -16,7 +15,6 @@ import com.n11.order_service.service.PaymentServiceClient;
 import com.n11.order_service.service.StockServiceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,20 +32,17 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final PaymentServiceClient paymentServiceClient;
     private final StockServiceClient stockServiceClient;
-    private final ApplicationEventPublisher publisher;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final PaymentCardStore paymentCardStore;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             PaymentServiceClient paymentServiceClient,
                             StockServiceClient stockServiceClient,
-                            ApplicationEventPublisher publisher,
                             KafkaTemplate<String, Object> kafkaTemplate,
                             PaymentCardStore paymentCardStore) {
         this.orderRepository = orderRepository;
         this.paymentServiceClient = paymentServiceClient;
         this.stockServiceClient = stockServiceClient;
-        this.publisher = publisher;
         this.kafkaTemplate = kafkaTemplate;
         this.paymentCardStore = paymentCardStore;
     }
@@ -56,6 +51,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request) {
 
+        // Gelen sipariş order_db'sine kayıt edilmek için hazırlanır
         Order order = new Order();
         order.setUsername(request.getUsername());
         order.setStatus(OrderStatus.CREATED);
@@ -64,7 +60,6 @@ public class OrderServiceImpl implements OrderService {
                         .mapToDouble(i -> i.getPrice() * i.getQuantity())
                         .sum()
         );
-
         List<OrderItem> items = request.getItems().stream().map(dto -> {
             OrderItem item = new OrderItem();
             item.setProductId(dto.getProductId());
@@ -75,7 +70,6 @@ public class OrderServiceImpl implements OrderService {
             return item;
         }).collect(Collectors.toList());
         order.setItems(items);
-
         OrderDetails details = new OrderDetails();
         details.setFirstName(request.getFirstName());
         details.setLastName(request.getLastName());
@@ -85,7 +79,6 @@ public class OrderServiceImpl implements OrderService {
         details.setPhone(request.getPhone());
         details.setEmail(request.getEmail());
         order.setOrderDetails(details);
-
         Order savedOrder = orderRepository.save(order);
         LOGGER.info("Order CREATED: orderId={}, username={}, totalPrice={}",
                 savedOrder.getId(), savedOrder.getUsername(), savedOrder.getTotalPrice());
@@ -102,33 +95,24 @@ public class OrderServiceImpl implements OrderService {
             LOGGER.warn("Card null, payment will fail for orderId={}", savedOrder.getId());
         }
 
+        // stock-reserve-requested topic'ine event atmak için sipariş hazırlanır
         StockReserveRequestedEvent eventPayload = new StockReserveRequestedEvent();
         eventPayload.setOrderId(savedOrder.getId());
         eventPayload.setUsername(savedOrder.getUsername());
-
         List<StockReserveRequestedEvent.Item> evItems = new ArrayList<>();
         for (OrderItem it : savedOrder.getItems()) {
             evItems.add(new StockReserveRequestedEvent.Item(it.getProductId(), it.getQuantity()));
         }
         eventPayload.setItems(evItems);
+        try {
+            kafkaTemplate.send(STOCK_RESERVE_REQUESTED_TOPIC, eventPayload);
+            LOGGER.info("StockReserveRequestedEvent sent to topic={}, orderId={}", STOCK_RESERVE_REQUESTED_TOPIC, savedOrder.getId());
+        } catch (Exception e) {
+            LOGGER.error("Kafka send failed for stock-reserve-requested: {}", e.getMessage());
+        }
 
-        kafkaTemplate.send(STOCK_RESERVE_REQUESTED_TOPIC, eventPayload);
-        LOGGER.info("StockReserveRequestedEvent sent to topic={}, orderId={}", STOCK_RESERVE_REQUESTED_TOPIC, savedOrder.getId());
 
-        OrderCreatedEvent springEvent = new OrderCreatedEvent();
-        springEvent.setOrderId(savedOrder.getId());
-        springEvent.setUsername(savedOrder.getUsername());
-        springEvent.setTotalPrice(savedOrder.getTotalPrice());
-        springEvent.setItems(savedOrder.getItems().stream().map(item -> {
-            OrderCreatedEvent.OrderItem oi = new OrderCreatedEvent.OrderItem();
-            oi.setProductId(item.getProductId());
-            oi.setProductName(item.getProductName());
-            oi.setPrice(item.getPrice());
-            oi.setQuantity(item.getQuantity());
-            return oi;
-        }).collect(Collectors.toList()));
-        publisher.publishEvent(springEvent);
-
+        // Bilgilendirme response'u hazırlanıyor.
         OrderResponse response = new OrderResponse();
         response.setOrderId(savedOrder.getId());
         response.setUsername(savedOrder.getUsername());

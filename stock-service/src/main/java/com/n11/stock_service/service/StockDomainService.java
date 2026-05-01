@@ -1,6 +1,7 @@
 package com.n11.stock_service.service;
 
 
+import com.n11.stock_service.dto.StockResponse;
 import com.n11.stock_service.dto.StockUpdateRequest;
 import com.n11.stock_service.dto.StockUpdateResponse;
 import com.n11.stock_service.entity.StockEntity;
@@ -17,9 +18,10 @@ public class StockDomainService {
         this.repo = repo;
     }
 
-    public StockEntity getByProductId(Long productId) {
-        return repo.findById(productId)
+    public StockResponse getByProductId(Long productId) {
+        StockEntity entity = repo.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+        return StockResponse.from(entity);
     }
 
     @Transactional

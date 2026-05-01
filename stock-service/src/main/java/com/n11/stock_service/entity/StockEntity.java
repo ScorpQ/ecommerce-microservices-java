@@ -59,10 +59,6 @@ public class StockEntity {
         this.reservedQuantity = reservedQuantity;
     }
 
-    /**
-     * Eski çalışan yapı için bırakıldı.
-     * Yeni saga akışında mümkünse reserve/release/commit kullanılmalı.
-     */
     public void decrease(int q) {
         validatePositiveOrZero(q);
 
@@ -73,17 +69,11 @@ public class StockEntity {
         availableQuantity -= q;
     }
 
-    /**
-     * Eski çalışan yapı için bırakıldı.
-     */
     public void increase(int q) {
         validatePositiveOrZero(q);
         availableQuantity += q;
     }
 
-    /**
-     * Sipariş oluşunca stok kalıcı düşmez, rezerve edilir.
-     */
     public void reserve(int q) {
         validatePositiveOrZero(q);
 
@@ -95,9 +85,6 @@ public class StockEntity {
         reservedQuantity += q;
     }
 
-    /**
-     * Ödeme başarısız olursa rezerve edilen stok geri bırakılır.
-     */
     public void release(int q) {
         validatePositiveOrZero(q);
 
@@ -109,10 +96,6 @@ public class StockEntity {
         availableQuantity += q;
     }
 
-    /**
-     * Ödeme başarılı olursa rezerv satışa dönüşür.
-     * Bu aşamada availableQuantity zaten reserve sırasında düşmüştü.
-     */
     public void commit(int q) {
         validatePositiveOrZero(q);
 

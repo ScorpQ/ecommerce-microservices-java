@@ -10,8 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
-@CrossOrigin(origins = {"http://localhost:3000", "http://85.159.71.66:3000","http://94.73.134.50:3000",
-        "http://localhost:8081/", "http://85.159.71.66:8081/,http://94.73.134.50:8081/"})
 public class OrderController {
 
     private final OrderServiceImpl orderServiceImpl;
@@ -19,7 +17,7 @@ public class OrderController {
         this.orderServiceImpl = orderServiceImpl;
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public OrderResponse createOrder(@RequestBody CreateOrderRequest request) {
         return orderServiceImpl.createOrder(request);
     }
