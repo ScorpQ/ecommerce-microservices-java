@@ -1,0 +1,14 @@
+{
+  "name": "n11-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for n11 e-commerce product search",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "axios": "^1.6.0"
+  }
+}

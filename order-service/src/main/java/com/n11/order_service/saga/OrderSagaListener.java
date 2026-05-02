@@ -73,6 +73,9 @@ public class OrderSagaListener {
                 pr.setStreetAddress(details.getStreetAddress());
                 pr.setAddress(details.getStreetAddress());
                 pr.setEmail(details.getEmail());
+                pr.setCity(details.getCity());
+                pr.setCountry(details.getCountry());
+                pr.setPhone(details.getPhone());
             }
             pr.setAmount(order.getTotalPrice());
             pr.setPaymentMethod("IYZICO");
@@ -113,6 +116,23 @@ public class OrderSagaListener {
 
             order.setStatus(OrderStatus.PAID);
             orderRepository.save(order);
+
+            try {
+                StockUpdateRequest commitReq = new StockUpdateRequest();
+                List<StockUpdateRequest.StockItem> commitItems = new ArrayList<>();
+                for (OrderItem it : order.getItems()) {
+                    StockUpdateRequest.StockItem si = new StockUpdateRequest.StockItem();
+                    si.setProductId(it.getProductId());
+                    si.setQuantity(it.getQuantity());
+                    commitItems.add(si);
+                }
+                commitReq.setItems(commitItems);
+                stockServiceClient.commitStock(commitReq);
+                LOGGER.info("[SAGA] Stock committed for orderId={}", order.getId());
+            } catch (Exception ex) {
+                LOGGER.error("[SAGA] Stock commit failed for orderId={}", order.getId(), ex);
+            }
+
             order.setStatus(OrderStatus.COMPLETED);
             orderRepository.save(order);
             LOGGER.info("[SAGA] Order COMPLETED: orderId={}", order.getId());
