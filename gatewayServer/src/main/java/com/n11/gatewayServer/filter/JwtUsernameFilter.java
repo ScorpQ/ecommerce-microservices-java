@@ -18,8 +18,7 @@ public class JwtUsernameFilter implements Filter {
 
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/product",
-            "/api/user/login",
-            "/api/user/register"
+            "/api/user"
     );
 
     @Override

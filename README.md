@@ -128,13 +128,6 @@ Stock Service → stok kontrol eder
                         Order Service → CANCELLED
 ```
 
-### Güvenlik
-- Keycloak ile OAuth2 / JWT authentication
-- API Gateway'de token decode → `X-User-Username` header injection
-- Tüm korumalı endpoint'ler gateway üzerinden JWT doğrulaması
-
----
-
 ## API Dokümantasyonu (Swagger)
 
 | Servis | Swagger UI |
@@ -195,34 +188,6 @@ IYZICO_API_KEY=<api key>
 IYZICO_SECRET_KEY=<secret key>
 ```
 
-### Çalıştırma
-
-```bash
-# Repoyu klonla
-git clone <repo-url>
-cd finalBoss
-
-# Tüm servisleri build et
-for service in eureka configServer gatewayServer productService cartService order-service stock-service user-service payment-service; do
-  cd $service && mvn clean package -DskipTests && cd ..
-done
-
-# Docker ile kaldır
-docker-compose up -d
-```
-
-### İlk Kurulumda Ürün Verisi
-
-Veritabanı oluştuktan sonra `product_db` ve `stock_db`'ye ürün verisi eklemek için:
-
-```bash
-# product_db
-psql -h <RDS_HOST> -U postgres -d product_db -f data/products.sql
-
-# stock_db
-psql -h <RDS_HOST> -U postgres -d stock_db -f data/stocks.sql
-```
-
 ---
 
 ## Proje Yapısı
@@ -248,17 +213,11 @@ finalBoss/
 Bu projede zorunlu gereksinimler dışında ek olarak eklenen özellikler:
 
 - **Microservices mimarisi** — Monolitik değil, 7 bağımsız servis
-- **Kafka Saga Pattern** — Dağıtık transaction yönetimi
-- **Amazon OpenSearch** — Full-text ürün arama motoru
-- **Redis Cache** — Yüksek performanslı sepet yönetimi
+- **Amazon ElasticSearch** — Full-text ürün arama
+- **Redis Cache** — Sepet yönetimi
 - **AWS S3** — Ürün görseli depolama
 - **Spring Cloud Gateway** — Merkezi JWT doğrulama ve routing
-- **Keycloak** — Enterprise-grade kimlik yönetimi
-- **MCP Server** — AI asistan entegrasyonu (Claude ile ürün sorgulama)
+- **Keycloak** —  Kimlik yönetimi
+- **MCP Server** — AI asistanı ile ürün sorgulama
 
 ---
-
-## Geliştirici
-
-**Proje:** Yazılım Mühendisliği Bitirme Projesi  
-**Yıl:** 2026
