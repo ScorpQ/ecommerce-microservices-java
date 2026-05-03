@@ -71,6 +71,11 @@ public class ProductController {
     }
 
 
+    @GetMapping("/categories")
+    public ResponseEntity<List<String>> getCategories() {
+        return ResponseEntity.ok(productService.getCategories());
+    }
+
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductResponse> uploadImage(
             @PathVariable Long id,

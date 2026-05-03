@@ -16,4 +16,5 @@ public interface ProductService {
     void deleteAll();
     Page<ProductResponse> getPaged(int page, int size);
     ProductResponse uploadImage(Long id, MultipartFile file) throws Exception;
+    List<String> getCategories();
 }

@@ -91,6 +91,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public List<String> getCategories() {
+        return productRepository.findDistinctCategories();
+    }
+
+    @Override
     public ProductResponse uploadImage(Long id, MultipartFile file) throws Exception {
         Product product = findById(id);
         String url = s3Service.upload(file);
