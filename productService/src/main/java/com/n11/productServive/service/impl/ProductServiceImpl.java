@@ -11,6 +11,8 @@ import com.n11.productServive.repository.ProductRepository;
 import com.n11.productServive.service.OpenSearchService;
 import com.n11.productServive.service.ProductService;
 import com.n11.productServive.service.S3Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -22,6 +24,8 @@ import java.util.List;
 
 @Service
 public class ProductServiceImpl implements ProductService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProductServiceImpl.class);
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
@@ -52,10 +56,11 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductResponse create(ProductRequest request) {
         Product saved = productRepository.save(productMapper.toEntity(request));
+        log.info("Product created: id={}, title={}, category={}", saved.getId(), saved.getTitle(), saved.getCategory());
         try {
             kafkaTemplate.send("product-created", new ProductCreatedEvent(saved.getId(), saved.getTitle()));
         } catch (Exception e) {
-            System.err.println("Kafka send failed for product-created: " + e.getMessage());
+            log.error("Kafka send failed for product-created: {}", e.getMessage());
         }
         openSearchService.indexProduct(saved);
         return productMapper.toResponse(saved);
@@ -83,6 +88,7 @@ public class ProductServiceImpl implements ProductService {
         product.setVisible(false);
         productRepository.save(product);
         openSearchService.deleteProduct(id);
+        log.info("Product deleted: id={}, title={}", id, product.getTitle());
     }
 
     @Override

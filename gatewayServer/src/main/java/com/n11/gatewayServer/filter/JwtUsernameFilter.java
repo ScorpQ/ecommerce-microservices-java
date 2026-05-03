@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -15,11 +16,24 @@ public class JwtUsernameFilter implements Filter {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static final List<String> PUBLIC_PATHS = List.of(
+            "/api/product",
+            "/api/user/login",
+            "/api/user/register"
+    );
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
 
         HttpServletRequest httpRequest = (HttpServletRequest) request;
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+        String path = httpRequest.getRequestURI();
+        String method = httpRequest.getMethod();
+
+        boolean isPublic = PUBLIC_PATHS.stream().anyMatch(path::startsWith)
+                && (path.startsWith("/api/product") ? "GET".equals(method) : true);
+
         String authHeader = httpRequest.getHeader("Authorization");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -40,6 +54,13 @@ public class JwtUsernameFilter implements Filter {
                 }
             } catch (Exception ignored) {
             }
+        }
+
+        if (!isPublic) {
+            httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            httpResponse.setContentType("application/json");
+            httpResponse.getWriter().write("{\"error\": \"Unauthorized\"}");
+            return;
         }
 
         chain.doFilter(request, response);
