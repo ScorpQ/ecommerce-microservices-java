@@ -6,10 +6,10 @@ import com.n11.cartService.dto.response.ShoppingCartResponse;
 import java.util.Map;
 
 public interface ShoppingCartService {
-    ShoppingCartResponse getOrCreateCart(Long userId);
-    ShoppingCartResponse addItem(Long userId, AddItemRequest request);
-    ShoppingCartResponse removeItem(Long userId, Long productId);
-    ShoppingCartResponse updateQuantity(Long userId, Long productId, Integer quantity);
-    void clearCart(Long userId);
-    Map<String, Long> getTotalPrice(Long userId);
+    ShoppingCartResponse getOrCreateCart(String username);
+    ShoppingCartResponse addItem(String username, AddItemRequest request);
+    ShoppingCartResponse removeItem(String username, Long productId);
+    ShoppingCartResponse updateQuantity(String username, Long productId, Integer quantity);
+    void clearCart(String username);
+    Map<String, Long> getTotalPrice(String username);
 }

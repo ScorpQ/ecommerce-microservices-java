@@ -13,7 +13,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 public class ShoppingCart implements Serializable {
-    private Long userId;
+    private String username;
     private List<CartItem> items = new ArrayList<>();
     private LocalDateTime createdAt = LocalDateTime.now();
 }

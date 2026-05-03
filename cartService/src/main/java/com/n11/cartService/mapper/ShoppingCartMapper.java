@@ -13,7 +13,7 @@ public class ShoppingCartMapper {
 
     public ShoppingCartResponse toResponse(ShoppingCart cart) {
         ShoppingCartResponse response = new ShoppingCartResponse();
-        response.setUserId(cart.getUserId());
+        response.setUsername(cart.getUsername());
         response.setCreatedAt(cart.getCreatedAt());
         response.setItems(toItemResponseList(cart.getItems()));
         return response;

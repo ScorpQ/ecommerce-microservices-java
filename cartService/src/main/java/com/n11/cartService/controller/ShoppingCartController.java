@@ -20,48 +20,48 @@ public class ShoppingCartController {
 
     @GetMapping
     public ResponseEntity<ShoppingCartResponse> getCart(
-            @RequestHeader("X-User-Id") Long userId
+            @RequestHeader("X-User-Username") String username
     ) {
-        return ResponseEntity.ok(shoppingCartService.getOrCreateCart(userId));
+        return ResponseEntity.ok(shoppingCartService.getOrCreateCart(username));
     }
 
     @PostMapping("/items")
     public ResponseEntity<ShoppingCartResponse> addItem(
-            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Username") String username,
             @RequestBody AddItemRequest request
     ) {
-        return ResponseEntity.ok(shoppingCartService.addItem(userId, request));
+        return ResponseEntity.ok(shoppingCartService.addItem(username, request));
     }
 
     @PutMapping("/items/{productId}")
     public ResponseEntity<ShoppingCartResponse> updateQuantity(
-            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Username") String username,
             @PathVariable Long productId,
             @RequestParam Integer quantity
     ) {
-        return ResponseEntity.ok(shoppingCartService.updateQuantity(userId, productId, quantity));
+        return ResponseEntity.ok(shoppingCartService.updateQuantity(username, productId, quantity));
     }
 
     @DeleteMapping("/items/{productId}")
     public ResponseEntity<ShoppingCartResponse> removeItem(
-            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Username") String username,
             @PathVariable Long productId
     ) {
-        return ResponseEntity.ok(shoppingCartService.removeItem(userId, productId));
+        return ResponseEntity.ok(shoppingCartService.removeItem(username, productId));
     }
 
     @DeleteMapping
     public ResponseEntity<Void> clearCart(
-            @RequestHeader("X-User-Id") Long userId
+            @RequestHeader("X-User-Username") String username
     ) {
-        shoppingCartService.clearCart(userId);
+        shoppingCartService.clearCart(username);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/total")
     public ResponseEntity<Map<String, Long>> getTotalPrice(
-            @RequestHeader("X-User-Id") Long userId
+            @RequestHeader("X-User-Username") String username
     ) {
-        return ResponseEntity.ok(shoppingCartService.getTotalPrice(userId));
+        return ResponseEntity.ok(shoppingCartService.getTotalPrice(username));
     }
 }

@@ -32,18 +32,18 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     }
 
     @Override
-    public ShoppingCartResponse getOrCreateCart(Long userId) {
-        return cartMapper.toResponse(findOrCreate(userId));
+    public ShoppingCartResponse getOrCreateCart(String username) {
+        return cartMapper.toResponse(findOrCreate(username));
     }
 
     @Override
-    public ShoppingCartResponse addItem(Long userId, AddItemRequest request) {
+    public ShoppingCartResponse addItem(String username, AddItemRequest request) {
         if (request.productId() == null || request.quantity() == null || request.quantity() <= 0) {
             throw new IllegalArgumentException("productId and quantity are required");
         }
 
         ProductResponse product = productClient.getById(request.productId());
-        ShoppingCart cart = findOrCreate(userId);
+        ShoppingCart cart = findOrCreate(username);
 
         cart.getItems().stream()
                 .filter(i -> i.getProductId().equals(request.productId()))
@@ -64,18 +64,18 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     }
 
     @Override
-    public ShoppingCartResponse removeItem(Long userId, Long productId) {
-        ShoppingCart cart = findOrThrow(userId);
+    public ShoppingCartResponse removeItem(String username, Long productId) {
+        ShoppingCart cart = findOrThrow(username);
         cart.getItems().removeIf(i -> i.getProductId().equals(productId));
         save(cart);
         return cartMapper.toResponse(cart);
     }
 
     @Override
-    public ShoppingCartResponse updateQuantity(Long userId, Long productId, Integer quantity) {
+    public ShoppingCartResponse updateQuantity(String username, Long productId, Integer quantity) {
         if (quantity <= 0) throw new IllegalArgumentException("Quantity must be greater than 0");
 
-        ShoppingCart cart = findOrThrow(userId);
+        ShoppingCart cart = findOrThrow(username);
         cart.getItems().stream()
                 .filter(i -> i.getProductId().equals(productId))
                 .findFirst()
@@ -86,40 +86,40 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     }
 
     @Override
-    public void clearCart(Long userId) {
-        redisTemplate.delete(key(userId));
+    public void clearCart(String username) {
+        redisTemplate.delete(key(username));
     }
 
     @Override
-    public Map<String, Long> getTotalPrice(Long userId) {
-        ShoppingCart cart = findOrThrow(userId);
+    public Map<String, Long> getTotalPrice(String username) {
+        ShoppingCart cart = findOrThrow(username);
         long total = cart.getItems().stream()
                 .mapToLong(i -> i.getPrice() * i.getQuantity())
                 .sum();
         return Map.of("totalPrice", total);
     }
 
-    private ShoppingCart findOrCreate(Long userId) {
-        ShoppingCart cart = redisTemplate.opsForValue().get(key(userId));
+    private ShoppingCart findOrCreate(String username) {
+        ShoppingCart cart = redisTemplate.opsForValue().get(key(username));
         if (cart == null) {
             cart = new ShoppingCart();
-            cart.setUserId(userId);
+            cart.setUsername(username);
             save(cart);
         }
         return cart;
     }
 
-    private ShoppingCart findOrThrow(Long userId) {
-        ShoppingCart cart = redisTemplate.opsForValue().get(key(userId));
-        if (cart == null) throw new CartNotFoundException(userId);
+    private ShoppingCart findOrThrow(String username) {
+        ShoppingCart cart = redisTemplate.opsForValue().get(key(username));
+        if (cart == null) throw new CartNotFoundException(username);
         return cart;
     }
 
     private void save(ShoppingCart cart) {
-        redisTemplate.opsForValue().set(key(cart.getUserId()), cart);
+        redisTemplate.opsForValue().set(key(cart.getUsername()), cart);
     }
 
-    private String key(Long userId) {
-        return KEY_PREFIX + userId;
+    private String key(String username) {
+        return KEY_PREFIX + username;
     }
 }

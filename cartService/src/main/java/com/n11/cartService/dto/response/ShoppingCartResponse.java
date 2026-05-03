@@ -9,7 +9,7 @@ import java.util.List;
 @Getter
 @Setter
 public class ShoppingCartResponse {
-    private Long userId;
+    private String username;
     private List<CartItemResponse> items;
     private LocalDateTime createdAt;
 }
