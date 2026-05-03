@@ -85,8 +85,13 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Page<ProductResponse> getPaged(int page, int size) {
-        return productRepository.findAllByVisibleTrue(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")))
+    public Page<ProductResponse> getPaged(int page, int size, String category) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        if (category != null && !category.isBlank()) {
+            return productRepository.findAllByVisibleTrueAndCategoryIgnoreCase(category, pageRequest)
+                    .map(productMapper::toResponse);
+        }
+        return productRepository.findAllByVisibleTrue(pageRequest)
                 .map(productMapper::toResponse);
     }
 

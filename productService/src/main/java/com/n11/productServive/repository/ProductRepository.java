@@ -19,6 +19,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // Bu aslında kabul edilebilir bir şey değil, category adında bir tablodan çekilmesi lazım ve OneToMany ilişkisi içermeli
     // Products tablosu ile. Şu an yetişmesi için böyle yapıyorum :) Teşekkürler.
+    Page<Product> findAllByVisibleTrueAndCategoryIgnoreCase(String category, Pageable pageable);
+
     @Query("SELECT DISTINCT p.category FROM Product p WHERE p.visible = true ORDER BY p.category")
     List<String> findDistinctCategories();
 }
