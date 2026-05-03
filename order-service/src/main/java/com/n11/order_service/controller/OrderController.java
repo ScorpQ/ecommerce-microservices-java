@@ -36,4 +36,9 @@ public class OrderController {
     public List<OrderResponse> getOrdersByUser(@PathVariable String username) {
         return orderServiceImpl.findOrdersByUsername(username);
     }
+
+    @GetMapping("/my/completed")
+    public List<OrderResponse> getMyCompletedOrders(@RequestHeader("X-User-Username") String username) {
+        return orderServiceImpl.findCompletedOrdersByUsername(username);
+    }
 }

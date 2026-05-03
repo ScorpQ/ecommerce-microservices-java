@@ -17,4 +17,5 @@ public interface OrderService {
 
     // --- Yeni: kullanıcının siparişlerini getir ---
     List<OrderResponse> findOrdersByUsername(String username);
+    List<OrderResponse> findCompletedOrdersByUsername(String username);
 }

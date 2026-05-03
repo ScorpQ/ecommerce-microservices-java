@@ -157,6 +157,12 @@ public class OrderServiceImpl implements OrderService {
         return orders.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Override
+    public List<OrderResponse> findCompletedOrdersByUsername(String username) {
+        return orderRepository.findByUsernameAndStatus(username, OrderStatus.COMPLETED)
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
     private OrderResponse toResponse(Order order) {
         OrderResponse response = new OrderResponse();
         response.setOrderId(order.getId());
