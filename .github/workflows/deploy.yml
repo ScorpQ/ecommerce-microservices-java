@@ -1,0 +1,89 @@
+name: CI/CD Deploy
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build eureka
+        run: mvn -f backend/eureka/pom.xml clean package -DskipTests
+
+      - name: Build config-server
+        run: mvn -f backend/configServer/pom.xml clean package -DskipTests
+
+      - name: Build gateway
+        run: mvn -f backend/gatewayServer/pom.xml clean package -DskipTests
+
+      - name: Build product-service
+        run: mvn -f backend/productService/pom.xml clean package -DskipTests
+
+      - name: Build cart-service
+        run: mvn -f backend/cartService/pom.xml clean package -DskipTests
+
+      - name: Build user-service
+        run: mvn -f backend/user-service/pom.xml clean package -DskipTests
+
+      - name: Build payment-service
+        run: mvn -f backend/payment-service/pom.xml clean package -DskipTests
+
+      - name: Build order-service
+        run: mvn -f backend/order-service/pom.xml clean package -DskipTests
+
+      - name: Build stock-service
+        run: mvn -f backend/stock-service/pom.xml clean package -DskipTests
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm ci && npm run build
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2.pem
+          chmod 600 ~/.ssh/ec2.pem
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy JARs to EC2
+        run: |
+          scp -i ~/.ssh/ec2.pem backend/eureka/target/*.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/backend/eureka/
+          scp -i ~/.ssh/ec2.pem backend/configServer/target/*.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/backend/configServer/
+          scp -i ~/.ssh/ec2.pem backend/gatewayServer/target/*.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/backend/gatewayServer/
+          scp -i ~/.ssh/ec2.pem backend/productService/target/*.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/backend/productService/
+          scp -i ~/.ssh/ec2.pem backend/cartService/target/*.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/backend/cartService/
+          scp -i ~/.ssh/ec2.pem backend/user-service/target/*.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/backend/user-service/
+          scp -i ~/.ssh/ec2.pem backend/payment-service/target/*.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/backend/payment-service/
+          scp -i ~/.ssh/ec2.pem backend/order-service/target/*.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/backend/order-service/
+          scp -i ~/.ssh/ec2.pem backend/stock-service/target/*.jar ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/backend/stock-service/
+
+      - name: Copy frontend dist to EC2
+        run: |
+          rsync -avz -e "ssh -i ~/.ssh/ec2.pem" frontend/dist/ ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/finalBoss/frontend/dist/
+
+      - name: Deploy on EC2
+        run: |
+          ssh -i ~/.ssh/ec2.pem ec2-user@${{ secrets.EC2_HOST }} "
+            cd /home/ec2-user/finalBoss/backend &&
+            docker rm -f \$(docker ps -aq) 2>/dev/null || true &&
+            docker-compose up -d --build
+          "
