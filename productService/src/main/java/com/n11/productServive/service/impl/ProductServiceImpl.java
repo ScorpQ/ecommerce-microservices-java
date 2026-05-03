@@ -1,5 +1,6 @@
 package com.n11.productServive.service.impl;
 
+import com.n11.productServive.document.ProductDocument;
 import com.n11.productServive.dto.request.ProductRequest;
 import com.n11.productServive.dto.response.ProductResponse;
 import com.n11.productServive.entity.Product;
@@ -7,6 +8,7 @@ import com.n11.productServive.event.ProductCreatedEvent;
 import com.n11.productServive.exception.ProductNotFoundException;
 import com.n11.productServive.mapper.ProductMapper;
 import com.n11.productServive.repository.ProductRepository;
+import com.n11.productServive.service.OpenSearchService;
 import com.n11.productServive.service.ProductService;
 import com.n11.productServive.service.S3Service;
 import org.springframework.data.domain.Page;
@@ -25,12 +27,14 @@ public class ProductServiceImpl implements ProductService {
     private final ProductMapper productMapper;
     private final S3Service s3Service;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final OpenSearchService openSearchService;
 
-    public ProductServiceImpl(ProductRepository productRepository, ProductMapper productMapper, S3Service s3Service, KafkaTemplate<String, Object> kafkaTemplate) {
+    public ProductServiceImpl(ProductRepository productRepository, ProductMapper productMapper, S3Service s3Service, KafkaTemplate<String, Object> kafkaTemplate, OpenSearchService openSearchService) {
         this.productRepository = productRepository;
         this.productMapper = productMapper;
         this.s3Service = s3Service;
         this.kafkaTemplate = kafkaTemplate;
+        this.openSearchService = openSearchService;
     }
 
     @Override
@@ -53,6 +57,7 @@ public class ProductServiceImpl implements ProductService {
         } catch (Exception e) {
             System.err.println("Kafka send failed for product-created: " + e.getMessage());
         }
+        openSearchService.indexProduct(saved);
         return productMapper.toResponse(saved);
     }
 
@@ -67,7 +72,9 @@ public class ProductServiceImpl implements ProductService {
         if (request.getTitle() != null) product.setTitle(request.getTitle());
         if (request.getCategory() != null) product.setCategory(request.getCategory());
         if (request.getDescription() != null) product.setDescription(request.getDescription());
-        return productMapper.toResponse(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        openSearchService.indexProduct(saved);
+        return productMapper.toResponse(saved);
     }
 
     @Override
@@ -75,6 +82,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = findById(id);
         product.setVisible(false);
         productRepository.save(product);
+        openSearchService.deleteProduct(id);
     }
 
     @Override
@@ -106,6 +114,26 @@ public class ProductServiceImpl implements ProductService {
         String url = s3Service.upload(file);
         product.setImg(url);
         return productMapper.toResponse(productRepository.save(product));
+    }
+
+    @Override
+    public List<ProductResponse> search(String query) {
+        List<ProductDocument> documents = openSearchService.search(query);
+        return documents.stream()
+                .map(doc -> {
+                    ProductResponse response = new ProductResponse();
+                    response.setId(doc.getId());
+                    response.setTitle(doc.getTitle());
+                    response.setDescription(doc.getDescription());
+                    response.setCategory(doc.getCategory());
+                    response.setBrand(doc.getBrand());
+                    response.setColor(doc.getColor());
+                    response.setPrice(doc.getPrice());
+                    response.setImg(doc.getImg());
+                    response.setLabels(doc.getLabels());
+                    return response;
+                })
+                .toList();
     }
 
     private Product findById(Long id) {

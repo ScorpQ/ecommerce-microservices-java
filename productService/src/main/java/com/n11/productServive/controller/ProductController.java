@@ -84,4 +84,9 @@ public class ProductController {
     ) throws Exception {
         return ResponseEntity.ok(productService.uploadImage(id, file));
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ProductResponse>> search(@RequestParam String q) {
+        return ResponseEntity.ok(productService.search(q));
+    }
 }

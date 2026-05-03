@@ -18,6 +18,9 @@ Product'a api gateway ile gitmek istersek:
 
        product silerken soft delete kullndım
 
+
+      product eklerken ElasticSearch'e de ekleme yapılıyor arka tarafta.
+
     Yapılması gerekenler manuel:
 
        Design patternler kesinlikle çalışmalısın.

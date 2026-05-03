@@ -17,4 +17,5 @@ public interface ProductService {
     Page<ProductResponse> getPaged(int page, int size, String category);
     ProductResponse uploadImage(Long id, MultipartFile file) throws Exception;
     List<String> getCategories();
+    List<ProductResponse> search(String query);
 }
